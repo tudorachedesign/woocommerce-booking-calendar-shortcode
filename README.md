@@ -96,6 +96,9 @@ function booking_tab_content() {
 └── README.md           # This file
 ```
 
+## Very Important
+You should remove the classic "add to cart" widget from the "bookable" products to avoid having calendars in multiple positions. So use some dynamic visibility on the specific product type then put the shortcode wherever you prefer.
+
 ## Requirements
 
 - WordPress 4.0+
