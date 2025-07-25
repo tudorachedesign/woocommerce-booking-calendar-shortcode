@@ -1,0 +1,84 @@
+/**
+ * Registers the shortcode for the WooCommerce Bookings Form
+ */
+function wc_bookings_form_shortcode( $atts ) {
+	// Shortcode attributes
+	$atts = shortcode_atts( array(
+		'product_id' => get_the_ID()
+	), $atts );
+	
+	// Check that it's a valid ID
+	$product_id = absint( $atts['product_id'] );
+	if ( ! $product_id ) {
+		return '';
+	}
+	
+	// Get the product
+	$product = wc_get_product( $product_id );
+	
+	// Check that it's a booking product
+	if ( ! $product || ! $product->is_type( 'booking' ) ) {
+		return '';
+	}
+	
+	// If we are on the correct product page, use the global form
+	if ( is_product() && get_the_ID() == $product_id ) {
+		global $wc_bookings_form_html;
+		
+		if ( ! empty( $wc_bookings_form_html ) ) {
+			return '<div class="wc-bookings-shortcode-wrapper">' . $wc_bookings_form_html . '</div>';
+		}
+	}
+	
+	// Otherwise, generate the form for the specified product
+	ob_start();
+	
+	// Necessary global setups
+	global $product, $post;
+	$original_product = $product;
+	$original_post = $post;
+	
+	$product = wc_get_product( $product_id );
+	$post = get_post( $product_id );
+	setup_postdata( $post );
+	
+	// Create the booking form
+	$booking_form = new WC_Booking_Form( $product );
+	$nonce = wp_create_nonce( 'find-booked-day-blocks' );
+	
+	?>
+	<div class="wc-bookings-shortcode-wrapper">
+		<form class="cart" method="post" enctype='multipart/form-data' data-nonce="<?php echo esc_attr( $nonce ); ?>">
+			<div id="wc-bookings-booking-form-<?php echo $product_id; ?>" class="wc-bookings-booking-form">
+				<?php $booking_form->output(); ?>
+				<div class="wc-bookings-booking-cost price" style="display:none" data-raw-price=""></div>
+			</div>
+			
+			<input type="hidden" name="add-to-cart" value="<?php echo esc_attr( $product_id ); ?>" class="wc-booking-product-id" />
+			<button type="submit" class="wc-bookings-booking-form-button single_add_to_cart_button button alt disabled">
+				<?php echo esc_html( $product->single_add_to_cart_text() ); ?>
+			</button>
+			
+			<input type="hidden" id="min_date_<?php echo $product_id; ?>" name="min_date" value="0"/>
+			<input type="hidden" id="max_date_<?php echo $product_id; ?>" name="max_date" value="0"/>
+			<input type="hidden" id="timezone_offset_<?php echo $product_id; ?>" name="timezone_offset" value="0"/>
+		</form>
+	</div>
+	
+	<script>
+	jQuery(document).ready(function($) {
+		$('#wc-bookings-booking-form-<?php echo $product_id; ?>').show();
+		$('#wc-bookings-booking-form-<?php echo $product_id; ?> .single_add_to_cart_button').show();
+	});
+	</script>
+	
+	<?php
+	
+	// Restore the original globals
+	$product = $original_product;
+	$post = $original_post;
+	wp_reset_postdata();
+	
+	return ob_get_clean();
+}
+add_shortcode( 'booking_calendar', 'wc_bookings_form_shortcode' );
